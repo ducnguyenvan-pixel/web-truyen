@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Đọc Truyện</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg:#181420;
+    --bg-card:#221c30;
+    --accent:#f4b942;
+    --text:#f0ece0;
+    --text-dim:#9b93ab;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Georgia','Times New Roman',serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+  }
+  .topbar{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:14px 20px;
+    border-bottom:1px solid #2f2740;
+    position:sticky;
+    top:0;
+    background:var(--bg);
+    z-index:10;
+  }
+  .topbar.reader-mode{ display:none; }
+  .btn-exit{
+    position:fixed;
+    top:10px;
+    left:10px;
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    background:rgba(20,16,28,0.5);
+    border:1px solid rgba(244,185,66,0.3);
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:16px;
+    cursor:pointer;
+    z-index:25;
+    user-select:none;
+  }
+  .btn-exit:hover{ border-color:var(--accent); color:var(--accent); }
+  .btn-back{
+    background:none;
+    border:1px solid #3a3250;
+    color:var(--text);
+    padding:8px 14px;
+    border-radius:5px;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:14px;
+  }
+  .btn-back:hover{ border-color:var(--accent); color:var(--accent); }
+  .topbar h2{
+    margin:0;
+    font-size:17px;
+    font-weight:600;
+    flex:1;
+  }
+  .chuong-list{
+    max-width:600px;
+    margin:24px auto;
+    padding:0 20px;
+  }
+  .chuong-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:14px 16px;
+    background:var(--bg-card);
+    border:1px solid #2f2740;
+    border-radius:6px;
+    margin-bottom:10px;
+    cursor:pointer;
+  }
+  .chuong-item:hover{ border-color:var(--accent); }
+
+  /* Reader */
+  #reader{ display:none; }
+  #reader.active{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:fixed;
+    inset:0;
+    background:var(--bg);
+    z-index:5;
+  }
+  .page-wrap{
+    width:100%;
+    height:100%;
+    margin:0;
+    padding:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .page-wrap img{
+    width:auto;
+    height:auto;
+    max-width:100vw;
+    max-height:100vh;
+    background:#0f0c16;
+    object-fit:contain;
+  }
+  .page-counter{
+    position:fixed;
+    bottom:10px;
+    left:50%;
+    transform:translateX(-50%);
+    color:var(--text);
+    font-size:12px;
+    background:rgba(20,16,28,0.6);
+    backdrop-filter:blur(4px);
+    padding:4px 12px;
+    border-radius:20px;
+    z-index:25;
+  }
+  .nav-arrow{
+    position:fixed;
+    top:50%;
+    transform:translateY(-50%);
+    width:52px;
+    height:52px;
+    border-radius:50%;
+    background:rgba(20,16,28,0.55);
+    border:1px solid rgba(244,185,66,0.35);
+    color:var(--text);
+    font-size:22px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    z-index:20;
+    user-select:none;
+    backdrop-filter:blur(2px);
+  }
+  .nav-arrow:hover:not(.disabled){ border-color:var(--accent); color:var(--accent); }
+  .nav-arrow.disabled{ opacity:0.25; cursor:default; }
+  .nav-arrow.left{ left:12px; }
+  .nav-arrow.right{ right:12px; }
+  @media (max-width:600px){
+    .nav-arrow{ width:42px; height:42px; font-size:18px; }
+  }
+  .status{
+    text-align:center;
+    color:var(--text-dim);
+    padding:60px 20px;
+    font-style:italic;
+  }
+  .key-box{
+    max-width:380px;
+    margin:60px auto;
+    padding:0 20px;
+    text-align:center;
+  }
+  .key-box .icon{ font-size:40px; margin-bottom:10px; }
+  .key-box h3{ margin:0 0 8px; font-size:18px; }
+  .key-box p{ color:var(--text-dim); font-size:13px; margin:0 0 20px; line-height:1.5; }
+  .key-box input{
+    width:100%;
+    background:var(--bg-card);
+    border:1px solid #3a3250;
+    color:var(--text);
+    padding:12px 14px;
+    border-radius:6px;
+    font-family:inherit;
+    font-size:15px;
+    text-align:center;
+    letter-spacing:1px;
+    box-sizing:border-box;
+  }
+  .key-box input:focus{ outline:none; border-color:var(--accent); }
+  .key-box button{
+    width:100%;
+    margin-top:12px;
+    background:var(--accent);
+    border:none;
+    color:#181420;
+    padding:12px 14px;
+    border-radius:6px;
+    font-family:inherit;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .key-box button:disabled{ opacity:0.5; cursor:default; }
+  .link-lay-key{
+    display:block;
+    margin-top:14px;
+    color:var(--accent);
+    font-size:13px;
+    text-decoration:none;
+  }
+  .link-lay-key:hover{ text-decoration:underline; }
+  .key-error{ color:#ff6b6b; font-size:13px; margin-top:10px; min-height:18px; }
+  @media (max-width:600px){
+    .topbar{ padding:10px 12px; gap:10px; }
+    .topbar h2{ font-size:15px; }
+    .btn-back{ padding:7px 10px; font-size:13px; white-space:nowrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="btn-back" onclick="handleBack()">← Trang chủ</button>
+  <h2 id="ten-truyen">Đang tải...</h2>
+</div>
+
+<div id="chuong-list-box" class="chuong-list"></div>
+
+<div id="reader">
+  <div class="btn-exit" onclick="handleBack()">✕</div>
+  <div class="nav-arrow left" id="btn-prev" onclick="prevPage()">‹</div>
+  <div class="nav-arrow right" id="btn-next" onclick="nextPage()">›</div>
+  <div class="page-wrap">
+    <img id="page-img" src="" alt="Trang truyện">
+  </div>
+  <div class="page-counter" id="page-counter"></div>
+</div>
+
+<script>
+// ==== CẤU HÌNH ====
+const KEY_API_BASE = "https://keygg.netlify.app/"; // thay bằng domain Netlify thật của bạn
+const LAY_KEY_URL = "https://link4m.net/2BchMeD"; // thay bằng link trang/link rút gọn nơi người dùng lấy key
+
+const params = new URLSearchParams(location.search);
+const truyenId = params.get('id');
+let truyenData = null;
+let loaiTruyen = 'free';
+let pages = [];       // mảng URL ảnh (object URL) đã tách từ zip, đã sắp xếp
+let currentPage = 0;
+let dangDoc = false;  // true khi đang ở màn hình đọc (để nút back biết quay về đâu)
+
+function daMoKhoa(id){
+  return localStorage.getItem(`mo-khoa-${id}`) === '1';
+}
+function danhDauMoKhoa(id){
+  localStorage.setItem(`mo-khoa-${id}`, '1');
+}
+
+async function xacDinhLoaiTruyen(id){
+  try{
+    const [freeRes, vipRes] = await Promise.all([fetch('data/free.json'), fetch('data/vip.json')]);
+    const free = await freeRes.json();
+    const vip = await vipRes.json();
+    if(vip.some(t => t.id === id)) return 'vip';
+    if(free.some(t => t.id === id)) return 'free';
+    return 'free'; // mặc định nếu không thấy ở đâu (an toàn hơn là chặn nhầm)
+  }catch(e){
+    console.error(e);
+    return 'free';
+  }
+}
+
+async function init(){
+  if(!truyenId){
+    document.getElementById('ten-truyen').textContent = 'Thiếu mã truyện';
+    return;
+  }
+  try{
+    const res = await fetch(`data/truyen/${truyenId}.json`);
+    if(!res.ok) throw new Error('not found');
+    truyenData = await res.json();
+    document.getElementById('ten-truyen').textContent = truyenData.ten;
+
+    loaiTruyen = await xacDinhLoaiTruyen(truyenId);
+
+    if(loaiTruyen === 'vip' && !daMoKhoa(truyenId)){
+      renderKeyForm();
+    } else {
+      renderChuongList();
+    }
+  }catch(e){
+    document.getElementById('ten-truyen').textContent = 'Không tìm thấy truyện';
+    console.error(e);
+  }
+}
+
+// ---- Màn hình nhập key cho truyện VIP ----
+function renderKeyForm(){
+  const box = document.getElementById('chuong-list-box');
+  box.innerHTML = `
+    <div class="key-box">
+      <div class="icon">🔒</div>
+      <h3>KEY</h3>
+      <p>Nhập key hợp lệ để mở khóa truyện này.</p>
+      <input type="text" id="key-input" maxlength="12" placeholder="Nhập key" autocomplete="off">
+      <button id="key-submit" onclick="submitKey()">Xác nhận</button>
+      <a href="${LAY_KEY_URL}" target="_blank" rel="noopener" class="link-lay-key">Chưa có key? Lấy key tại đây</a>
+      <div class="key-error" id="key-error"></div>
+    </div>
+  `;
+  document.getElementById('key-input').addEventListener('keydown', e => {
+    if(e.key === 'Enter') submitKey();
+  });
+}
+
+// Kiểm tra định dạng key: đúng 12 ký tự chữ/số, bắt buộc có D, U, C
+function dinhDangHopLe(key){
+  if(!/^[A-Za-z0-9]{12}$/.test(key)) return false;
+  return key.includes('D') && key.includes('U') && key.includes('C');
+}
+
+async function submitKey(){
+  const input = document.getElementById('key-input');
+  const errorBox = document.getElementById('key-error');
+  const btn = document.getElementById('key-submit');
+  const key = input.value.trim();
+
+  errorBox.textContent = '';
+
+  if(!dinhDangHopLe(key)){
+    errorBox.textContent = 'Key không đúng định dạng .';
+    return;
+  }
+
+  // Chặn ngay trên thiết bị này nếu key đã được dùng ở đây rồi (không cần gọi API)
+  const daDungODay = layDanhSachKeyDaDung();
+  if(daDungODay.includes(key)){
+    errorBox.textContent = 'Bạn đã dùng key này trên thiết bị này rồi.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Đang kiểm tra...';
+
+  try{
+    const res = await fetch(`${KEY_API_BASE}/api/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key })
+    });
+    const data = await res.json();
+
+    if(data.valid){
+      danhDauMoKhoa(truyenId);
+      luuKeyDaDung(key); // đánh dấu key này đã dùng TRÊN THIẾT BỊ NÀY, không ảnh hưởng người khác
+      renderChuongList();
+    } else {
+      const loiTheoLyDo = {
+        not_found: 'Key không tồn tại hoặc sai.',
+        expired: 'Key đã hết hạn.',
+        already_used: 'Key này đã được dùng rồi.'
+      };
+      errorBox.textContent = loiTheoLyDo[data.reason] || 'Key không hợp lệ.';
+      btn.disabled = false;
+      btn.textContent = 'Xác nhận';
+    }
+  }catch(e){
+    errorBox.textContent = 'Không kết nối được tới máy chủ xác thực key. Thử lại sau.';
+    btn.disabled = false;
+    btn.textContent = 'Xác nhận';
+    console.error(e);
+  }
+}
+
+// Danh sách key đã dùng RIÊNG trên thiết bị/trình duyệt này (không phải toàn cục)
+function layDanhSachKeyDaDung(){
+  try{ return JSON.parse(localStorage.getItem('key-da-dung') || '[]'); }catch(e){ return []; }
+}
+function luuKeyDaDung(key){
+  const list = layDanhSachKeyDaDung();
+  list.push(key);
+  localStorage.setItem('key-da-dung', JSON.stringify(list));
+}
+
+function renderChuongList(){
+  const box = document.getElementById('chuong-list-box');
+  box.innerHTML = (truyenData.chuong || []).map((c, idx) => `
+    <div class="chuong-item" onclick="openChuong(${idx})">
+      <span>${c.ten}</span>
+      <span>›</span>
+    </div>
+  `).join('') || '<div class="status">Chưa có chương nào.</div>';
+}
+
+// Mã hóa từng phần của đường dẫn (xử lý dấu cách, &, #, dấu tiếng Việt)
+function duongDan(p){
+  return String(p).split('/').map(s => /^%[0-9A-Fa-f]{2}/.test(s) ? s : encodeURIComponent(s)).join('/');
+}
+
+async function openChuong(idx){
+  const chuong = truyenData.chuong[idx];
+  document.getElementById('chuong-list-box').innerHTML = '<div class="status">Đang tải chương, vui lòng đợi...</div>';
+
+  try{
+    // 1. Tải file zip
+    const res = await fetch(duongDan(chuong.file));
+    if(!res.ok) throw new Error(`Không tải được "${chuong.file}" (HTTP ${res.status}) - sai tên/đường dẫn file zip`);
+    const blob = await res.blob();
+
+    // 2. Dùng JSZip để giải nén, lấy hết ảnh bên trong
+    const zip = await JSZip.loadAsync(blob);
+    const imageFiles = [];
+    zip.forEach((relPath, file) => {
+      if(!file.dir && /\.(webp|jpg|jpeg|png)$/i.test(relPath)){
+        imageFiles.push({ path: relPath, file: file });
+      }
+    });
+
+    // 3. Sắp xếp đúng thứ tự theo tên file (001.webp, 002.webp, ...)
+    imageFiles.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
+
+    if(imageFiles.length === 0){
+      document.getElementById('chuong-list-box').innerHTML = '<div class="status">File này không chứa ảnh hợp lệ.</div>';
+      return;
+    }
+
+    // 4. Tạo URL cho từng ảnh để hiển thị
+    pages = [];
+    for(const img of imageFiles){
+      const data = await img.file.async('blob');
+      pages.push(URL.createObjectURL(data));
+    }
+
+    currentPage = 0;
+    dangDoc = true;
+    document.getElementById('chuong-list-box').style.display = 'none';
+    document.getElementById('reader').classList.add('active');
+    document.querySelector('.topbar').classList.add('reader-mode');
+    showPage();
+
+  }catch(e){
+    document.getElementById('chuong-list-box').innerHTML = '<div class="status">Không đọc được file truyện.<br><small>' + String(e.message).replace(/</g,'&lt;') + '</small></div>';
+    console.error(e);
+  }
+}
+
+function showPage(){
+  document.getElementById('page-img').src = pages[currentPage];
+  document.getElementById('page-counter').textContent = `Trang ${currentPage + 1} / ${pages.length}`;
+  document.getElementById('btn-prev').classList.toggle('disabled', currentPage === 0);
+  document.getElementById('btn-next').classList.toggle('disabled', currentPage === pages.length - 1);
+}
+
+function nextPage(){
+  if(currentPage < pages.length - 1){
+    currentPage++;
+    showPage();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+}
+
+function prevPage(){
+  if(currentPage > 0){
+    currentPage--;
+    showPage();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+}
+
+function handleBack(){
+  if(dangDoc){
+    // Đang đọc -> quay về danh sách chương của truyện này
+    dangDoc = false;
+    document.getElementById('reader').classList.remove('active');
+    document.querySelector('.topbar').classList.remove('reader-mode');
+    document.getElementById('chuong-list-box').style.display = 'block';
+    renderChuongList();
+    // Giải phóng bộ nhớ ảnh đã tạo
+    pages.forEach(url => URL.revokeObjectURL(url));
+    pages = [];
+  } else {
+    // Đang ở danh sách chương -> về trang chủ
+    location.href = 'index.html';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tài liệu học tập</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg:#181420;
+    --bg-card:#221c30;
+    --accent:#f4b942;
+    --text:#f0ece0;
+    --text-dim:#9b93ab;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Georgia','Times New Roman',serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+  }
+  header{
+    padding:28px 24px 20px;
+    text-align:center;
+    border-bottom:1px solid #2f2740;
+  }
+  header h1{ margin:0; font-size:28px; letter-spacing:0.5px; font-weight:600; }
+  header p{ color:var(--text-dim); font-size:14px; margin:8px 0 0; }
+
+  /* Avatar + tag ở trên cùng */
+  .profile{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:26px 20px 6px;
+  }
+  .avatar{
+    width:104px;
+    height:104px;
+    border-radius:50%;
+    object-fit:cover;
+    border:3px solid var(--accent);
+    background:#2a2438;
+    box-shadow:0 4px 16px rgba(0,0,0,0.45);
+  }
+  .profile .tag{
+    margin-top:8px;
+    font-size:13px;
+    color:var(--text-dim);
+    letter-spacing:0.3px;
+  }
+
+  /* 3 panel trên + 3 panel dưới, panel to hơn */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:28px;
+    padding:24px;
+    max-width:1200px;
+    margin:0 auto;
+  }
+  @media (max-width:640px){
+    .grid{ gap:10px; padding:14px; }
+    .card .info h3{ font-size:13px !important; }
+    .card .info p{ display:none; }
+  }
+  .card{
+    position:relative;
+    background:var(--bg-card);
+    border-radius:6px;
+    overflow:hidden;
+    cursor:pointer;
+    transition:transform .15s ease;
+    border:1px solid #2f2740;
+  }
+  .card:hover{ transform:translateY(-4px); border-color:var(--accent); }
+  .card img{
+    width:100%;
+    aspect-ratio:3/4;
+    object-fit:cover;
+    display:block;
+    background:#2a2438;
+  }
+  .card.vip img{ filter:blur(9px) brightness(0.7); }
+  .vip-badge{
+    position:absolute;
+    top:8px;
+    left:8px;
+    background:rgba(244,185,66,0.9);
+    color:#181420;
+    font-size:11px;
+    font-weight:700;
+    padding:3px 8px;
+    border-radius:4px;
+    letter-spacing:0.5px;
+  }
+  .star-btn{
+    position:absolute;
+    top:6px;
+    right:6px;
+    width:30px;
+    height:30px;
+    border-radius:50%;
+    background:rgba(20,16,28,0.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:16px;
+    cursor:pointer;
+    color:#9b93ab;
+    z-index:2;
+  }
+  .star-btn.active{ color:var(--accent); }
+  .card .info{ padding:14px 16px 18px; }
+  .card .info h3{ margin:0 0 6px; font-size:18px; font-weight:600; line-height:1.3; }
+  .card .info p{ margin:0; font-size:13px; color:var(--text-dim); line-height:1.45; }
+  .empty{ text-align:center; color:var(--text-dim); padding:60px 20px; font-style:italic; }
+
+  .pagination{ display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 20px 40px; }
+  .pagination button{
+    background:var(--bg-card); border:1px solid #3a3250; color:var(--text);
+    width:38px; height:38px; border-radius:5px; cursor:pointer; font-family:inherit; font-size:14px;
+  }
+  .pagination button.arrow{ width:auto; padding:0 14px; }
+  .pagination button:hover:not(:disabled):not(.active){ border-color:var(--accent); color:var(--accent); }
+  .pagination button.active{ background:var(--accent); color:#181420; border-color:var(--accent); font-weight:600; }
+  .pagination button:disabled{ opacity:0.3; cursor:not-allowed; }
+  @media (max-width:480px){ .pagination button{ width:34px; height:34px; font-size:13px; } }
+
+  .toast{
+    position:fixed;
+    top:14px;
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--bg-card);
+    border:1px solid var(--accent);
+    color:var(--text);
+    padding:12px 40px 12px 16px;
+    border-radius:8px;
+    font-size:14px;
+    cursor:pointer;
+    z-index:50;
+    box-shadow:0 6px 18px rgba(0,0,0,0.4);
+    max-width:90vw;
+  }
+  .toast .close{
+    position:absolute;
+    top:6px;
+    right:8px;
+    font-size:13px;
+    color:var(--text-dim);
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="profile">
+    <img class="avatar" id="avatar" src="images/avatar.jpg" alt="Avatar"
+         onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%232a2438%22/><text x=%2250%22 y=%2266%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%23f4b942%22>X</text></svg>'">
+    <div class="tag">@Xiecgiagia</div>
+  </div>
+  <header>
+    <h1>Tài liệu học tập</h1>
+    <p>Chọn một truyện để bắt đầu đọc</p>
+  </header>
+  <div class="grid" id="grid">
+    <div class="empty">Đang tải danh sách truyện...</div>
+  </div>
+  <div class="pagination" id="pagination"></div>
+
+<script>
+const SO_TRUYEN_MOI_TRANG = 6;
+let danhSachTruyen = [];
+let trangHienTai = 1;
+
+function layYeuThich(){
+  try{ return JSON.parse(localStorage.getItem('yeu-thich') || '[]'); }catch(e){ return []; }
+}
+function luuYeuThich(list){ localStorage.setItem('yeu-thich', JSON.stringify(list)); }
+
+function toggleYeuThich(id, ev){
+  ev.stopPropagation();
+  let list = layYeuThich();
+  if(list.includes(id)) list = list.filter(x => x !== id);
+  else list.push(id);
+  luuYeuThich(list);
+  renderTrang(trangHienTai);
+}
+
+async function loadTruyen(){
+  const grid = document.getElementById('grid');
+  try{
+    const [freeRes, vipRes] = await Promise.all([
+      fetch('data/free.json'),
+      fetch('data/vip.json')
+    ]);
+    const free = (await freeRes.json()).map(t => ({...t, loai:'free'}));
+    const vip  = (await vipRes.json()).map(t => ({...t, loai:'vip'}));
+    danhSachTruyen = [...free, ...vip];
+
+    if(!danhSachTruyen.length){
+      grid.innerHTML = '<div class="empty">Chưa có truyện nào.</div>';
+      return;
+    }
+
+    kiemTraTruyenMoi();
+    renderTrang(1);
+  }catch(e){
+    grid.innerHTML = '<div class="empty">Không tải được danh sách truyện.</div>';
+    console.error(e);
+  }
+}
+
+function sapXepTheoYeuThich(list){
+  const yeuThich = layYeuThich();
+  return [...list].sort((a, b) => {
+    const aYT = yeuThich.includes(a.id) ? 0 : 1;
+    const bYT = yeuThich.includes(b.id) ? 0 : 1;
+    return aYT - bYT;
+  });
+}
+
+function renderTrang(trang){
+  trangHienTai = trang;
+  const daSapXep = sapXepTheoYeuThich(danhSachTruyen);
+  const tongSoTrang = Math.ceil(daSapXep.length / SO_TRUYEN_MOI_TRANG);
+  const batDau = (trang - 1) * SO_TRUYEN_MOI_TRANG;
+  const dsTrang = daSapXep.slice(batDau, batDau + SO_TRUYEN_MOI_TRANG);
+  const yeuThich = layYeuThich();
+
+  const grid = document.getElementById('grid');
+  grid.innerHTML = dsTrang.map(t => `
+    <div class="card ${t.loai==='vip'?'vip':''}" onclick="location.href='doc.html?id=${encodeURIComponent(t.id)}'">
+      <div class="star-btn ${yeuThich.includes(t.id)?'active':''}" onclick="toggleYeuThich('${t.id}', event)">${yeuThich.includes(t.id) ? '★' : '☆'}</div>
+      ${t.loai==='vip' ? '<div class="vip-badge">VIP</div>' : ''}
+      <img data-id="${t.id}" alt="${t.ten}">
+      <div class="info">
+        <h3>${t.ten}</h3>
+        <p>${t.mo_ta ? t.mo_ta.slice(0, 40) + (t.mo_ta.length > 40 ? '…' : '') : ''}</p>
+      </div>
+    </div>
+  `).join('');
+
+  renderPhanTrang(tongSoTrang);
+  napBiaCacPanel(dsTrang);
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function renderPhanTrang(tongSoTrang){
+  const el = document.getElementById('pagination');
+  if(tongSoTrang <= 1){ el.innerHTML = ''; return; }
+  let html = `<button class="arrow" ${trangHienTai===1?'disabled':''} onclick="renderTrang(${trangHienTai-1})">‹ Trước</button>`;
+  for(let i = 1; i <= tongSoTrang; i++){
+    html += `<button class="${i===trangHienTai?'active':''}" onclick="renderTrang(${i})">${i}</button>`;
+  }
+  html += `<button class="arrow" ${trangHienTai===tongSoTrang?'disabled':''} onclick="renderTrang(${trangHienTai+1})">Sau ›</button>`;
+  el.innerHTML = html;
+}
+
+// ---- Thông báo truyện mới ----
+function kiemTraTruyenMoi(){
+  const idsHienTai = danhSachTruyen.map(t => t.id);
+  let daXem;
+  try{ daXem = JSON.parse(localStorage.getItem('da-xem-truyen') || 'null'); }catch(e){ daXem = null; }
+
+  if(daXem === null){
+    localStorage.setItem('da-xem-truyen', JSON.stringify(idsHienTai));
+    return;
+  }
+
+  const idsMoi = idsHienTai.filter(id => !daXem.includes(id));
+  localStorage.setItem('da-xem-truyen', JSON.stringify(idsHienTai));
+
+  if(idsMoi.length > 0){
+    const truyenDauTien = danhSachTruyen.find(t => t.id === idsMoi[0]);
+    hienToast(truyenDauTien, idsMoi.length);
+  }
+}
+
+function hienToast(truyen, soLuong){
+  const div = document.createElement('div');
+  div.className = 'toast';
+  div.innerHTML = `🎉 Truyện mới: <b>${truyen.ten}</b>${soLuong > 1 ? ` và ${soLuong - 1} truyện khác` : ''}<span class="close">✕</span>`;
+  div.onclick = (e) => {
+    if(e.target.classList.contains('close')){ div.remove(); return; }
+    location.href = `doc.html?id=${encodeURIComponent(truyen.id)}`;
+  };
+  document.body.appendChild(div);
+}
+
+// ---- Avatar chính: ảnh cố định ----
+const AVATAR_MAC_DINH = 'images/avatar.jpg'; // đổi đường dẫn ảnh của bạn ở đây
+document.getElementById('avatar').src = AVATAR_MAC_DINH;
+
+// ---- Tự cắt ảnh bìa từ file zip của từng truyện ----
+const BIA_W = 720, BIA_H = 960;          // tỉ lệ 3:4, đủ nét cho panel to + màn hình retina
+const BIA_VERSION = 'v3';                // đổi v2 -> v3 để buộc cắt lại toàn bộ
+
+// Lưu bìa bằng IndexedDB (không giới hạn ~5MB như localStorage)
+let _bia_db = null;
+function moDB(){
+  if(_bia_db) return _bia_db;
+  _bia_db = new Promise((resolve, reject) => {
+    const rq = indexedDB.open('bia-truyen', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('bia');
+    rq.onsuccess = () => resolve(rq.result);
+    rq.onerror = () => reject(rq.error);
+  });
+  return _bia_db;
+}
+async function layBiaCache(id){
+  try{
+    const db = await moDB();
+    return await new Promise(res => {
+      const rq = db.transaction('bia').objectStore('bia').get(`${BIA_VERSION}-${id}`);
+      rq.onsuccess = () => res(rq.result ? URL.createObjectURL(rq.result) : null);
+      rq.onerror = () => res(null);
+    });
+  }catch(e){ return null; }
+}
+async function luuBiaCache(id, blob){
+  try{
+    const db = await moDB();
+    db.transaction('bia', 'readwrite').objectStore('bia').put(blob, `${BIA_VERSION}-${id}`);
+  }catch(e){}
+}
+
+// Cắt ảnh về tỉ lệ 3:4 (lấy giữa, hơi lệch lên trên nếu ảnh dọc)
+function catBia(blob){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const im = new Image();
+    im.onload = () => {
+      const tiLe = BIA_W / BIA_H;
+      let sw = im.naturalWidth, sh = im.naturalHeight;
+      if(sw / sh > tiLe) sw = sh * tiLe; else sh = sw / tiLe;
+      const sx = (im.naturalWidth - sw) / 2;
+      const sy = (im.naturalHeight - sh) * 0.2;
+      // Không phóng to ảnh nhỏ hơn kích thước đích (tránh bị mờ/vỡ)
+      const k = Math.min(1, sw / BIA_W);
+      const w = Math.round(BIA_W * k), h = Math.round(BIA_H * k);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(im, sx, sy, sw, sh, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      c.toBlob(b => b ? resolve(b) : reject(new Error('toBlob')), 'image/jpeg', 0.92);
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); reject(new Error('img')); };
+    im.src = url;
+  });
+}
+
+// Mã hóa từng phần của đường dẫn (xử lý dấu cách, &, #, dấu tiếng Việt)
+function duongDan(p){
+  return String(p).split('/').map(s => /^%[0-9A-Fa-f]{2}/.test(s) ? s : encodeURIComponent(s)).join('/');
+}
+
+// Bìa cố định: mặc định lấy ảnh số BIA_ANH (0 = ảnh đầu tiên) của chương số BIA_CHUONG (0 = chương đầu).
+// Muốn chọn ảnh khác cho 1 truyện, thêm vào data/truyen/<id>.json:  "bia": { "chuong": 0, "anh": 2 }
+const BIA_CHUONG = 0, BIA_ANH = 0;
+
+async function taoBiaTuZip(id){
+  const jr = await fetch(`data/truyen/${encodeURIComponent(id)}.json`);
+  if(!jr.ok) throw new Error(`Thiếu file data/truyen/${id}.json (HTTP ${jr.status})`);
+  const tj = await jr.json();
+  const dsChuong = tj.chuong || [];
+  if(!dsChuong.length) throw new Error('Truyện chưa có chương nào trong json');
+
+  const cauHinh = tj.bia || {};
+  const batDau = Math.min(Number.isInteger(cauHinh.chuong) ? cauHinh.chuong : BIA_CHUONG, dsChuong.length - 1);
+  const anhMong = Number.isInteger(cauHinh.anh) ? cauHinh.anh : BIA_ANH;
+
+  // Thử chương đã chọn trước; nếu zip lỗi thì thử lần lượt các chương sau
+  const thuTu = [...dsChuong.slice(batDau), ...dsChuong.slice(0, batDau)];
+  const loi = [];
+  for(const chuong of thuTu){
+    try{
+      const res = await fetch(duongDan(chuong.file));
+      if(!res.ok) throw new Error(`không tải được ${chuong.file} (HTTP ${res.status})`);
+      const zip = await JSZip.loadAsync(await res.blob());
+      const files = [];
+      zip.forEach((p, f) => { if(!f.dir && /\.(webp|jpe?g|png|gif|bmp|avif)$/i.test(p)) files.push({ path: p, file: f }); });
+      if(!files.length) throw new Error(`${chuong.file} không có ảnh bên trong`);
+      // sắp xếp giống doc.html (001, 002, ... đúng thứ tự trang)
+      files.sort((x, y) => x.path.localeCompare(y.path, undefined, { numeric: true }));
+      const chon = files[Math.min(anhMong, files.length - 1)];
+      return await catBia(await chon.file.async('blob'));
+    }catch(e){
+      loi.push(e.message);
+    }
+  }
+  throw new Error(loi.join(' | '));
+}
+
+const dangTaoBia = new Set();
+async function napBiaCacPanel(dsTrang){
+  for(const t of dsTrang){
+    const sel = `.card img[data-id="${CSS.escape(t.id)}"]`;
+    const cache = await layBiaCache(t.id);
+    if(cache){ document.querySelectorAll(sel).forEach(el => el.src = cache); continue; }
+    if(dangTaoBia.has(t.id)) continue;
+    dangTaoBia.add(t.id);
+    taoBiaTuZip(t.id).then(blob => {
+      luuBiaCache(t.id, blob);
+      const data = URL.createObjectURL(blob);
+      document.querySelectorAll(sel).forEach(el => el.src = data);
+    }).catch(e => {
+      console.error('Không tạo được bìa từ zip cho truyện', t.id, '→', e.message);
+      if(t.anh_bia) document.querySelectorAll(sel).forEach(el => el.src = t.anh_bia);
+    }).finally(() => dangTaoBia.delete(t.id));
+  }
+}
+
+loadTruyen();
+</script>
+</body>
+</html>

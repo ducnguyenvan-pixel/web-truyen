@@ -1,0 +1,7 @@
+ {
+    "id": "pokemon-go",
+
+    "chuong": [
+      { "so": 1, "ten": "Chương 1", "file": "truyen/Pokemon GO.zip" }
+    ]
+  }
